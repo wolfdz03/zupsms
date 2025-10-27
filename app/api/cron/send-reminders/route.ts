@@ -26,17 +26,37 @@ export async function GET(request: Request) {
     const offsetMinutes = currentSettings.smsOffsetMinutes;
     const templateId = currentSettings.smsTemplate;
 
-    // Get current time and day in Paris timezone (or adjust as needed)
+    // Get current time and day in Paris timezone
     const now = new Date();
-    const currentDay = DAY_NAMES[now.getDay()];
     
-    // Calculate target time (now + offset)
-    const targetTime = new Date(now.getTime() + offsetMinutes * 60 * 1000);
-    const targetHour = targetTime.getHours().toString().padStart(2, "0");
-    const targetMinute = targetTime.getMinutes().toString().padStart(2, "0");
-    const targetTimeStr = `${targetHour}:${targetMinute}`;
+    // Convert to Paris timezone (Europe/Paris)
+    const parisFormatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Europe/Paris",
+      hour: "2-digit",
+      minute: "2-digit",
+      day: "numeric",
+      hour12: false,
+    });
+    
+    const parts = parisFormatter.formatToParts(now);
+    const parisHour = parseInt(parts.find(p => p.type === "hour")?.value || "0");
+    const parisMin = parseInt(parts.find(p => p.type === "minute")?.value || "0");
+    const parisDay = parseInt(parts.find(p => p.type === "day")?.value || "0");
+    
+    // Get day of week for Paris timezone
+    const nowParis = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Paris" }));
+    const currentDay = DAY_NAMES[nowParis.getDay()];
+    
+    // Calculate target time (now + offset) in Paris timezone
+    const targetTotalMin = parisHour * 60 + parisMin + offsetMinutes;
+    const targetHour = Math.floor(targetTotalMin / 60) % 24;
+    const targetMinute = targetTotalMin % 60;
+    const targetTimeStr = `${targetHour.toString().padStart(2, "0")}:${targetMinute.toString().padStart(2, "0")}`;
 
-    console.log(`Current day: ${currentDay}, Target time: ${targetTimeStr}`);
+    console.log(`📅 Current day: ${currentDay}, Current time (Paris): ${parisHour.toString().padStart(2, "0")}:${parisMin.toString().padStart(2, "0")}`);
+    console.log(`⏰ SMS offset: ${offsetMinutes} minutes`);
+    console.log(`🎯 Target time (when session starts): ${targetTimeStr}`);
+    console.log(`📱 SMS will be sent ${offsetMinutes} minutes before session starts`);
 
     // Find all active students for today whose session starts at target time (within 5-minute window)
     const allStudents = await db.query.students.findMany({
@@ -44,6 +64,12 @@ export async function GET(request: Request) {
         eq(students.dayOfWeek, currentDay as "lundi" | "mardi" | "mercredi" | "jeudi" | "vendredi" | "samedi" | "dimanche"),
         eq(students.isActive, true)
       ),
+    });
+
+    // Debug logging
+    console.log(`Total active students found for ${currentDay}: ${allStudents.length}`);
+    allStudents.forEach(student => {
+      console.log(`  - ${student.fullName}: ${student.startTime} (${student.dayOfWeek})`);
     });
 
     // Filter students whose start time matches (within 5-minute window for flexibility)
@@ -57,10 +83,27 @@ export async function GET(request: Request) {
 
       // Check if within 5-minute window
       const diff = Math.abs(studentTotalMin - targetTotalMin);
-      return diff <= 5;
+      const matches = diff <= 5;
+      
+      if (matches) {
+        console.log(`  ✓ Match: ${student.fullName} (${studentTime} vs target ${targetTimeStr}, diff: ${diff}min)`);
+      }
+      
+      return matches;
     });
 
     console.log(`Found ${studentsToNotify.length} students to notify`);
+
+    if (studentsToNotify.length === 0 && allStudents.length > 0) {
+      console.log(`⚠️  No students found with start time matching ${targetTimeStr} (±5 minutes)`);
+      console.log(`Available student times for ${currentDay}:`);
+      const uniqueTimes = [...new Set(allStudents.map(s => s.startTime.substring(0, 5)))];
+      uniqueTimes.forEach(time => console.log(`  - ${time}`));
+    }
+
+    if (allStudents.length === 0) {
+      console.log(`ℹ️  No active students found for ${currentDay}`);
+    }
 
     const results = [];
 
