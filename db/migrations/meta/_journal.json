@@ -22,6 +22,13 @@
       "when": 1761434658657,
       "tag": "0002_optimal_hellion",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1761571269618,
+      "tag": "0003_foamy_madelyne_pryor",
+      "breakpoints": true
     }
   ]
 }

@@ -35,24 +35,7 @@ type MessageTemplate = {
   updatedAt: Date;
 };
 
-const TEMPLATE_PRESETS = [
-  {
-    name: "Rappel Simple",
-    template: "Bonjour {student_name}, votre cours commence dans 15 minutes à {start_time}. À bientôt!",
-  },
-  {
-    name: "Rappel Formel",
-    template: "Bonjour {student_name}, nous vous rappelons que votre session commence à {start_time} le {day}.",
-  },
-  {
-    name: "Rappel Amical",
-    template: "Salut {student_name} ! Ton cours commence dans 15 min à {start_time}. On t'attend! 😊",
-  },
-  {
-    name: "Rappel Détaillé",
-    template: "Bonjour {student_name}, rappel pour votre cours du {day} qui commence à {start_time}. Préparez vos affaires!",
-  },
-];
+// No presets needed - Sweego templates are managed in the Sweego dashboard
 
 const SMS_CHAR_LIMIT = 160;
 const SMS_EXTENDED_LIMIT = 306;
@@ -213,7 +196,7 @@ export default function SmsSettingsPage() {
 
   const handleSaveSettings = async () => {
     if (!template.trim()) {
-      toast.error("Le modèle de message ne peut pas être vide");
+      toast.error("L'ID du modèle ne peut pas être vide");
       return;
     }
 
@@ -287,24 +270,15 @@ export default function SmsSettingsPage() {
     }
   };
 
-  const applyPreset = (presetTemplate: string) => {
-    setTemplate(presetTemplate);
-    toast.success("Modèle appliqué!");
-  };
-
-  const previewMessage = template
-    .replace("{student_name}", "Ahmed Ben Ali")
-    .replace("{start_time}", "14:00")
-    .replace("{day}", "lundi");
+  // Preview message (example with Sweego variables)
+  const previewMessage = "Merci de vous connecter aux prochaines seances de tutorat chaque lundi a 14:00\nLien connexion: plateforme.zupdeco.org/login\nCode : 123123";
 
   const charCount = previewMessage.length;
   const smsCount = Math.ceil(charCount / SMS_CHAR_LIMIT);
   const isOverLimit = charCount > SMS_EXTENDED_LIMIT;
 
-  // Validate template variables
-  const hasStudentName = template.includes("{student_name}");
-  const hasStartTime = template.includes("{start_time}");
-  const hasDay = template.includes("{day}");
+  // No validation needed for Sweego template ID
+  // Variables are configured in the Sweego dashboard
 
   if (isLoading) {
     return (
@@ -396,93 +370,58 @@ export default function SmsSettingsPage() {
 
                 <Separator />
 
-                {/* SMS Template */}
+                {/* Sweego Template ID */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="template" className="text-base font-semibold">
-                      Modèle de message SMS
+                      Sweego Template ID
                     </Label>
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant={isOverLimit ? "destructive" : charCount > SMS_CHAR_LIMIT ? "default" : "secondary"}
-                        className={!isOverLimit && charCount <= SMS_CHAR_LIMIT ? "bg-green-100 text-green-700" : ""}
-                      >
-                        {charCount} / {SMS_CHAR_LIMIT} caractères
-                      </Badge>
-                      <Badge variant="outline">{smsCount} SMS</Badge>
-                    </div>
                   </div>
 
-                  {/* Template Presets */}
-                  <div className="space-y-4">
-                    <p className="text-base font-semibold text-neutral-900">Modèles rapides:</p>
-                    <div className="grid grid-cols-2 gap-4">
-                      {TEMPLATE_PRESETS.map((preset) => (
-                        <button
-                          key={preset.name}
-                          onClick={() => applyPreset(preset.template)}
-                          className="text-left p-5 rounded-xl border-2 hover:border-blue-300 hover:bg-blue-50 transition-card shadow-card hover:shadow-card-hover"
-                        >
-                          <div className="space-y-2">
-                            <p className="font-bold text-sm text-neutral-900">{preset.name}</p>
-                            <p className="text-xs text-neutral-600 line-clamp-2 leading-relaxed">
-                              {preset.template}
-                            </p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <Textarea
+                  <Input
                     id="template"
                     value={template}
                     onChange={(e) => setTemplate(e.target.value)}
-                    rows={6}
-                    placeholder="Salut {student_name}, ton cours commence dans 15 minutes..."
-                    className="resize-none text-base p-4 shadow-card"
+                    placeholder="97775950-fe78-4b1b-98cd-13646067b704"
+                    className="text-base p-4 shadow-card font-mono"
                   />
-
-                  {/* Variables Info */}
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium text-neutral-700">Variables disponibles:</p>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div className={`flex items-center gap-2 p-3 rounded-lg border-2 ${hasStudentName ? "bg-green-50 border-green-200" : "bg-neutral-50 border-neutral-200"}`}>
-                        {hasStudentName ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-neutral-400 shrink-0" />
-                        )}
-                        <code className="text-xs font-mono">{"{student_name}"}</code>
-                      </div>
-                      <div className={`flex items-center gap-2 p-3 rounded-lg border-2 ${hasStartTime ? "bg-green-50 border-green-200" : "bg-neutral-50 border-neutral-200"}`}>
-                        {hasStartTime ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-neutral-400 shrink-0" />
-                        )}
-                        <code className="text-xs font-mono">{"{start_time}"}</code>
-                      </div>
-                      <div className={`flex items-center gap-2 p-3 rounded-lg border-2 ${hasDay ? "bg-green-50 border-green-200" : "bg-neutral-50 border-neutral-200"}`}>
-                        {hasDay ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
-                        ) : (
-                          <AlertCircle className="w-4 h-4 text-neutral-400 shrink-0" />
-                        )}
-                        <code className="text-xs font-mono">{"{day}"}</code>
-                      </div>
-                    </div>
+                  
+                  <div className="flex items-start gap-2 text-sm text-neutral-600 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                    <p>
+                      L'ID du modèle est géré depuis votre dashboard Sweego. Copiez l'ID depuis{" "}
+                      <a href="https://app.sweego.io/templates" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-semibold">
+                        app.sweego.io/templates
+                      </a>
+                    </p>
                   </div>
 
-                  {isOverLimit && (
-                    <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 p-4 rounded-lg border border-red-200">
-                      <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                  {/* Sweego Variables Info */}
+                  <div className="space-y-3">
+                    <p className="text-sm font-medium text-neutral-700">Variables utilisées par le système:</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center gap-2 p-3 rounded-lg border-2 bg-green-50 border-green-200">
+                        <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                        <div>
+                          <code className="text-xs font-mono">{"{{ jour }}"}</code>
+                          <p className="text-xs text-neutral-600">Jour de la semaine</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 p-3 rounded-lg border-2 bg-green-50 border-green-200">
+                        <CheckCircle2 className="w-4 h-4 text-green-600 shrink-0" />
+                        <div>
+                          <code className="text-xs font-mono">{"{{ heure }}"}</code>
+                          <p className="text-xs text-neutral-600">Heure du cours</p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-2 text-sm text-neutral-600 bg-neutral-50 p-4 rounded-lg border">
+                      <AlertCircle className="w-4 h-4 text-neutral-500 mt-0.5 shrink-0" />
                       <p>
-                        Le message est trop long! Veuillez le réduire à maximum {SMS_EXTENDED_LIMIT}{" "}
-                        caractères.
+                        Assurez-vous que votre modèle Sweego contient ces variables: <code className="font-mono">{"{{ jour }}"}</code> et <code className="font-mono">{"{{ heure }}"}</code>
                       </p>
                     </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Preview */}
@@ -504,7 +443,7 @@ export default function SmsSettingsPage() {
                 {/* Save Button */}
                 <Button
                   onClick={handleSaveSettings}
-                  disabled={isSaving || isOverLimit}
+                  disabled={isSaving}
                   className="w-full gap-2 h-12 text-base"
                   size="lg"
                 >
@@ -519,8 +458,8 @@ export default function SmsSettingsPage() {
             {/* Templates Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-neutral-900">Mes modèles</h2>
-                <p className="text-neutral-600 mt-1">Gérez vos modèles de messages personnalisés</p>
+                <h2 className="text-2xl font-bold text-neutral-900">Modèles personnalisés</h2>
+                <p className="text-neutral-600 mt-1">Gérez vos modèles de messages (stockés localement)</p>
               </div>
               <Button
                 onClick={() => handleOpenTemplateDialog()}
@@ -529,6 +468,18 @@ export default function SmsSettingsPage() {
                 <Plus className="w-5 h-5" />
                 Nouveau modèle
               </Button>
+            </div>
+
+            {/* Sweego Info */}
+            <div className="flex items-start gap-2 text-sm bg-neutral-50 border-2 border-neutral-200 p-4 rounded-lg">
+              <AlertCircle className="w-4 h-4 text-neutral-600 mt-0.5 shrink-0" />
+              <p className="text-neutral-700">
+                Les modèles SMS actifs sont gérés depuis{" "}
+                <a href="https://app.sweego.io/templates" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline font-semibold">
+                  votre dashboard Sweego
+                </a>
+                . Les modèles ci-dessous sont stockés localement pour référence.
+              </p>
             </div>
 
             {/* Templates Grid */}
@@ -555,9 +506,8 @@ export default function SmsSettingsPage() {
               <div className="grid md:grid-cols-2 gap-6">
                 {templates.map((tmpl) => {
                   const preview = tmpl.content
-                    .replace("{student_name}", "Ahmed")
-                    .replace("{start_time}", "14:00")
-                    .replace("{day}", "lundi");
+                    .replace("{{ jour }}", "lundi")
+                    .replace("{{ heure }}", "14:00");
                   const charCount = preview.length;
                   const isOverLimit = charCount > SMS_EXTENDED_LIMIT;
 
@@ -647,22 +597,16 @@ export default function SmsSettingsPage() {
             <Card className="border-2">
               <CardHeader className="pb-6">
                 <CardTitle className="text-xl">Envoyer un SMS test</CardTitle>
-                <CardDescription>
-                  Testez votre message avant de l&apos;envoyer aux étudiants
-                </CardDescription>
+                  <CardDescription>
+                    Testez votre configuration Sweego en envoyant un SMS
+                  </CardDescription>
               </CardHeader>
               <CardContent className="space-y-8">
-                {/* Preview First */}
-                <div className="space-y-3">
-                  <Label className="text-base font-semibold">Message qui sera envoyé:</Label>
-                  <Card className="bg-blue-50 border-2 border-blue-200">
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-3">
-                        <MessageSquare className="w-5 h-5 text-blue-600 mt-1 shrink-0" />
-                        <p className="text-sm text-blue-900 leading-relaxed">{previewMessage}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                <div className="flex items-start gap-2 text-sm text-neutral-600 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                  <AlertCircle className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+                  <p>
+                    Le message envoyé utilisera le modèle configuré dans Sweego avec les variables <code className="font-mono">{"{{ jour }}"}</code> et <code className="font-mono">{"{{ heure }}"}</code>
+                  </p>
                 </div>
 
                 <Separator />
@@ -687,7 +631,7 @@ export default function SmsSettingsPage() {
 
                 <Button
                   onClick={handleSendTest}
-                  disabled={isSendingTest || !testPhone || isOverLimit}
+                  disabled={isSendingTest || !testPhone}
                   className="w-full gap-2 h-12 text-base"
                   size="lg"
                 >
@@ -739,7 +683,7 @@ export default function SmsSettingsPage() {
                     setTemplateFormData({ ...templateFormData, content: e.target.value })
                   }
                   rows={6}
-                  placeholder="Bonjour {student_name}, votre cours commence à {start_time}..."
+                  placeholder="Merci de vous connecter aux prochaines seances de tutorat chaque {{ jour }} a {{ heure }}..."
                   className="resize-none text-base p-4 shadow-card"
                 />
                 
@@ -748,13 +692,10 @@ export default function SmsSettingsPage() {
                   <p className="text-sm font-medium text-blue-900 mb-2">Variables disponibles:</p>
                   <div className="flex gap-2 flex-wrap">
                     <code className="text-xs bg-white px-2 py-1 rounded border border-blue-200 font-mono">
-                      {"{student_name}"}
+                      {"{{ jour }}"}
                     </code>
                     <code className="text-xs bg-white px-2 py-1 rounded border border-blue-200 font-mono">
-                      {"{start_time}"}
-                    </code>
-                    <code className="text-xs bg-white px-2 py-1 rounded border border-blue-200 font-mono">
-                      {"{day}"}
+                      {"{{ heure }}"}
                     </code>
                   </div>
                 </div>

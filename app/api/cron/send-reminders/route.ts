@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { students, smsLogs } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { sendSMS, formatMessage } from "@/lib/sweego";
+import { sendSMS, formatMessage } from "@/lib/sms";
 
 // Map day numbers to French day names
 const DAY_NAMES = ["dimanche", "lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi"];
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     }
 
     const offsetMinutes = currentSettings.smsOffsetMinutes;
-    const template = currentSettings.smsTemplate;
+    const templateId = currentSettings.smsTemplate;
 
     // Get current time and day in Paris timezone (or adjust as needed)
     const now = new Date();
@@ -66,21 +66,19 @@ export async function GET(request: Request) {
 
     for (const student of studentsToNotify) {
       try {
-        // Format message
-        const message = formatMessage(template, {
-          student_name: student.fullName,
-          start_time: student.startTime.substring(0, 5),
-          day: currentDay,
-        });
+        // Send SMS with template variables (using Sweego variable names: jour, heure)
+        const result = await sendSMS(student.phone, {
+          jour: currentDay,
+          heure: student.startTime.substring(0, 5),
+        }, templateId);
 
-        // Send SMS
-        const result = await sendSMS(student.phone, message);
+        // Log the SMS (template now contains Sweego template ID)
+        const logMessage = `[Sweego Template: ${templateId}] Variables: jour=${currentDay}, heure=${student.startTime.substring(0, 5)}`;
 
-        // Log the SMS
         await db.insert(smsLogs).values({
           studentId: student.id,
           phone: student.phone,
-          message: message,
+          message: logMessage,
           status: result.success ? "sent" : "failed",
         });
 

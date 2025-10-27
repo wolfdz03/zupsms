@@ -1,0 +1,1 @@
+ALTER TABLE "settings" ALTER COLUMN "sms_template" SET DEFAULT '97775950-fe78-4b1b-98cd-13646067b704';

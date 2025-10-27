@@ -46,7 +46,7 @@ export const settings = pgTable("settings", {
   id: uuid("id").primaryKey().defaultRandom(),
   smsOffsetMinutes: integer("sms_offset_minutes").default(15).notNull(),
   smsTemplate: text("sms_template")
-    .default("Salut {student_name}, ton cours commence dans 15 minutes. À tout de suite!")
+    .default("97775950-fe78-4b1b-98cd-13646067b704") // Sweego template ID
     .notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

@@ -82,7 +82,7 @@ async function seed() {
     // Create default settings
     await db.insert(settings).values({
       smsOffsetMinutes: 15,
-      smsTemplate: "Salut {student_name}, ton cours commence dans 15 minutes. À tout de suite!",
+      smsTemplate: "97775950-fe78-4b1b-98cd-13646067b704", // Sweego template ID
     });
     console.log("✅ Created default settings");
 
