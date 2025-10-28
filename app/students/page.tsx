@@ -478,18 +478,11 @@ export default function StudentsPage() {
                     <SelectItem value="none">Aucun tuteur</SelectItem>
                     {tutors.map((tutor) => (
                       <SelectItem key={tutor.id} value={tutor.id}>
-                        <div className="flex items-center gap-2">
-                          {tutor.name} {tutor.studentCount >= 5 && "⚠️ (Complet)"}
-                        </div>
+                        {tutor.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                {formData.tutorId && tutors.find(t => t.id === formData.tutorId)?.studentCount >= 4 && (
-                  <p className="text-sm text-orange-600 flex items-center gap-2">
-                    ⚠️ Ce tuteur est proche de sa capacité maximale (5 étudiants)
-                  </p>
-                )}
               </div>
               <div className="space-y-3">
                 <Label htmlFor="isActive" className="text-base font-semibold">Statut</Label>

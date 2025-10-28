@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, UserPlus, Pencil, Trash2, Mail, Users, AlertTriangle } from "lucide-react";
+import { Search, UserPlus, Pencil, Trash2, Mail, Users } from "lucide-react";
 import { toast } from "sonner";
 import { AvatarPicker, AvatarDisplay } from "@/components/ui/avatar-picker";
 import { getDefaultAvatar } from "@/lib/avatars";
@@ -175,11 +175,6 @@ export default function TutorsPage() {
     );
   });
 
-  const capacityWarning = (studentCount: number) => {
-    if (studentCount >= 5) return { show: true, text: "Capacité maximale", color: "text-red-600 bg-red-50 border-red-200" };
-    if (studentCount >= 4) return { show: true, text: "Presque complet", color: "text-orange-600 bg-orange-50 border-orange-200" };
-    return { show: false, text: "", color: "" };
-  };
 
   return (
     <div className="min-h-screen bg-neutral-50">
@@ -248,8 +243,6 @@ export default function TutorsPage() {
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredTutors.map((tutor) => {
-              const warning = capacityWarning(tutor.studentCount);
-              
               return (
                 <Card 
                   key={tutor.id} 
@@ -264,26 +257,13 @@ export default function TutorsPage() {
                         </h3>
                         <Badge 
                           variant="secondary"
-                          className={`${
-                            tutor.studentCount >= 5 
-                              ? "bg-red-100 text-red-700 border-red-200" 
-                              : tutor.studentCount >= 4
-                              ? "bg-orange-100 text-orange-700 border-orange-200"
-                              : "bg-green-100 text-green-700 border-green-200"
-                          } border text-xs`}
+                          className="bg-blue-100 text-blue-700 border-blue-200 border text-xs"
                         >
                           <Users className="w-3 h-3 mr-1" />
-                          {tutor.studentCount}/5 étudiants
+                          {tutor.studentCount} étudiant{tutor.studentCount !== 1 ? "s" : ""}
                         </Badge>
                       </div>
                     </div>
-
-                    {warning.show && (
-                      <div className={`flex items-center gap-2 p-2.5 rounded-lg border ${warning.color}`}>
-                        <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                        <span className="text-xs font-medium">{warning.text}</span>
-                      </div>
-                    )}
 
                     <div className="space-y-2 pt-1">
                       <div className="flex items-center gap-2 text-xs text-neutral-700">

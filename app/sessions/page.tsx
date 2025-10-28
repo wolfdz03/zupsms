@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -22,15 +24,21 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Search, CheckSquare, Download, Clock, UserX } from "lucide-react";
+import { Search, CheckSquare, Download, Clock, UserX, Calendar, List, Filter, X } from "lucide-react";
 import { toast } from "sonner";
 import { AvatarDisplay } from "@/components/ui/avatar-picker";
+import { CalendarView } from "@/components/sessions/calendar-view";
 
 type Tutor = {
   id: string;
   name: string;
   email: string;
   avatarUrl: string;
+};
+
+type TutorFilter = {
+  id: string;
+  name: string;
 };
 
 type Student = {
@@ -59,6 +67,7 @@ const DAY_LABELS: Record<string, string> = {
 
 export default function SessionsPage() {
   const [students, setStudents] = useState<Student[]>([]);
+  const [tutors, setTutors] = useState<TutorFilter[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -66,9 +75,28 @@ export default function SessionsPage() {
   const [pendingToggle, setPendingToggle] = useState<{ id: string; currentState: boolean } | null>(
     null
   );
+  
+  // Filter states
+  const [tutorFilter, setTutorFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dayFilter, setDayFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
+  const [showFilters, setShowFilters] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
     fetchStudents();
+    fetchTutors();
+  }, []);
+
+  // Memoized callbacks to prevent infinite loops
+  const handleCalendarNavigate = useCallback((newDate: Date) => {
+    setCurrentDate(newDate);
+  }, []);
+
+  const handleCalendarViewChange = useCallback((view: string) => {
+    // Optional: handle view changes if needed
+    console.log("Calendar view changed to:", view);
   }, []);
 
   const fetchStudents = async () => {
@@ -81,6 +109,16 @@ export default function SessionsPage() {
       toast.error("Erreur lors du chargement des sessions");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchTutors = async () => {
+    try {
+      const response = await fetch("/api/tutors");
+      const data = await response.json();
+      setTutors(data.map((t: Tutor) => ({ id: t.id, name: t.name })));
+    } catch (error) {
+      console.error("Error fetching tutors:", error);
     }
   };
 
@@ -210,15 +248,34 @@ export default function SessionsPage() {
     toast.success("Export réussi!");
   };
 
-  // Filter students based on search query
-  const filteredStudents = students.filter((student) => {
-    const query = searchQuery.toLowerCase();
-    return (
-      student.fullName.toLowerCase().includes(query) ||
-      student.phone.includes(query) ||
-      student.email?.toLowerCase().includes(query)
-    );
-  });
+  // Filter students based on search query and filters
+  const filteredStudents = useMemo(() => {
+    return students.filter((student) => {
+      // Search query filter
+      const query = searchQuery.toLowerCase();
+      const matchesSearch =
+        student.fullName.toLowerCase().includes(query) ||
+        student.phone.includes(query) ||
+        student.email?.toLowerCase().includes(query);
+
+      // Tutor filter
+      const matchesTutor = 
+        tutorFilter === "all" || 
+        (tutorFilter === "none" && !student.tutorId) ||
+        (tutorFilter !== "none" && student.tutorId === tutorFilter);
+
+      // Status filter
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "active" && student.isActive) ||
+        (statusFilter === "inactive" && !student.isActive);
+
+      // Day filter
+      const matchesDay = dayFilter === "all" || student.dayOfWeek === dayFilter;
+
+      return matchesSearch && matchesTutor && matchesStatus && matchesDay;
+    });
+  }, [students, searchQuery, tutorFilter, statusFilter, dayFilter]);
 
   // Group students by day
   const studentsByDay = DAYS_ORDER.reduce((acc, day) => {
@@ -245,6 +302,15 @@ export default function SessionsPage() {
     );
   }
 
+  const clearFilters = () => {
+    setTutorFilter("all");
+    setStatusFilter("all");
+    setDayFilter("all");
+    setSearchQuery("");
+  };
+
+  const hasActiveFilters = tutorFilter !== "all" || statusFilter !== "all" || dayFilter !== "all" || searchQuery !== "";
+
   return (
     <div className="min-h-screen bg-neutral-50">
       <div className="max-w-5xl mx-auto p-8 space-y-10">
@@ -267,12 +333,128 @@ export default function SessionsPage() {
                 )}
               </div>
             </div>
-            <Button onClick={handleExport} variant="outline" className="gap-2 px-8 h-12 shadow-card hover:shadow-card-hover transition-card">
-              <Download className="w-5 h-5" />
-              Exporter
-            </Button>
+            <div className="flex gap-3">
+              <Button onClick={handleExport} variant="outline" className="gap-2 px-8 h-12 shadow-card hover:shadow-card-hover transition-card">
+                <Download className="w-5 h-5" />
+                Exporter
+              </Button>
+            </div>
           </div>
         </div>
+
+        {/* View Toggle */}
+        <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "list" | "calendar")}>
+          <div className="flex items-center justify-between gap-4">
+            <TabsList className="h-12 bg-white border-2 shadow-card">
+              <TabsTrigger value="list" className="gap-2 px-6 h-10">
+                <List className="w-4 h-4" />
+                Liste
+              </TabsTrigger>
+              <TabsTrigger value="calendar" className="gap-2 px-6 h-10">
+                <Calendar className="w-4 h-4" />
+                Calendrier
+              </TabsTrigger>
+            </TabsList>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              className="gap-2 h-10 px-4 shadow-card"
+            >
+              <Filter className="w-4 h-4" />
+              Filtres
+              {hasActiveFilters && (
+                <Badge variant="default" className="ml-1 bg-blue-600">
+                  {[tutorFilter !== "all" ? 1 : 0, statusFilter !== "all" ? 1 : 0, dayFilter !== "all" ? 1 : 0, searchQuery ? 1 : 0].reduce((a, b) => a + b, 0)}
+                </Badge>
+              )}
+            </Button>
+          </div>
+
+          {/* Filters Panel */}
+          {showFilters && (
+            <Card className="border-2 shadow-card">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-lg font-bold text-neutral-900">Filtres</h3>
+                  <div className="flex gap-2">
+                    {hasActiveFilters && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearFilters}
+                        className="gap-2 text-neutral-600 hover:text-neutral-900"
+                      >
+                        <X className="w-4 h-4" />
+                        Réinitialiser
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="grid md:grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-neutral-900">Tuteur</label>
+                    <Select value={tutorFilter} onValueChange={setTutorFilter}>
+                      <SelectTrigger className="h-11">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les tuteurs</SelectItem>
+                        <SelectItem value="none">Sans tuteur</SelectItem>
+                        {tutors.map((tutor) => (
+                          <SelectItem key={tutor.id} value={tutor.id}>
+                            {tutor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-neutral-900">Statut</label>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="h-11">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous</SelectItem>
+                        <SelectItem value="active">Actifs</SelectItem>
+                        <SelectItem value="inactive">Inactifs</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-neutral-900">Jour</label>
+                    <Select value={dayFilter} onValueChange={setDayFilter}>
+                      <SelectTrigger className="h-11">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les jours</SelectItem>
+                        {DAYS_ORDER.map((day) => (
+                          <SelectItem key={day} value={day}>
+                            {DAY_LABELS[day]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-neutral-900">Recherche</label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                      <Input
+                        type="text"
+                        placeholder="Nom, téléphone..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10 h-11"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
         {/* Bulk Actions */}
         {selectedIds.size > 0 && (
@@ -311,17 +493,18 @@ export default function SessionsPage() {
           </Card>
         )}
 
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
-          <Input
-            type="text"
-            placeholder="Rechercher par nom, téléphone ou email..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 h-16 text-base border-2 shadow-card"
-          />
-        </div>
+          <TabsContent value="list" className="mt-6 space-y-6">
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-neutral-400" />
+              <Input
+                type="text"
+                placeholder="Rechercher par nom, téléphone ou email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-12 h-16 text-base border-2 shadow-card"
+              />
+            </div>
 
         {/* Select All */}
         {filteredStudents.length > 0 && (
@@ -501,17 +684,32 @@ export default function SessionsPage() {
           })}
         </Accordion>
 
-        {filteredStudents.length === 0 && (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 rounded-full bg-neutral-100 flex items-center justify-center mx-auto mb-6">
-              <Search className="w-12 h-12 text-neutral-300" />
+          {filteredStudents.length === 0 && (
+            <div className="text-center py-20">
+              <div className="w-24 h-24 rounded-full bg-neutral-100 flex items-center justify-center mx-auto mb-6">
+                <Search className="w-12 h-12 text-neutral-300" />
+              </div>
+              <p className="text-2xl font-bold text-neutral-900 mb-3">Aucun étudiant trouvé</p>
+              <p className="text-base text-neutral-500">
+                Essayez de modifier votre recherche
+              </p>
             </div>
-            <p className="text-2xl font-bold text-neutral-900 mb-3">Aucun étudiant trouvé</p>
-            <p className="text-base text-neutral-500">
-              Essayez de modifier votre recherche
-            </p>
-          </div>
-        )}
+          )}
+          </TabsContent>
+
+          <TabsContent value="calendar" className="mt-6">
+            <Card className="border-2 shadow-card">
+              <CardContent className="p-6">
+                <CalendarView
+                  students={filteredStudents}
+                  currentDate={currentDate}
+                  onNavigate={handleCalendarNavigate}
+                  onViewChange={handleCalendarViewChange}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
 
         {/* Confirmation Dialog */}
         <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>

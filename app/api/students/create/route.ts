@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { students } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
 
 export async function POST(request: Request) {
   try {
@@ -16,20 +15,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // If tutorId is provided, check if tutor has capacity (max 5 students)
-    if (tutorId) {
-      const tutorStudents = await db
-        .select({ count: sql<number>`cast(count(*) as int)` })
-        .from(students)
-        .where(eq(students.tutorId, tutorId));
-
-      if (tutorStudents[0].count >= 5) {
-        return NextResponse.json(
-          { error: "Ce tuteur a atteint sa capacité maximale (5 étudiants)" },
-          { status: 400 }
-        );
-      }
-    }
 
     const [newStudent] = await db
       .insert(students)

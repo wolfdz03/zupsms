@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { students } from "@/db/schema";
-import { eq, sql, and, ne } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export async function PATCH(
   request: Request,
@@ -11,24 +11,6 @@ export async function PATCH(
     const { id } = await params;
     const body = await request.json();
     const { fullName, phone, email, dayOfWeek, startTime, tutorId, isActive } = body;
-
-    // If tutorId is being changed/set, check capacity (max 5 students)
-    if (tutorId) {
-      const tutorStudents = await db
-        .select({ count: sql<number>`cast(count(*) as int)` })
-        .from(students)
-        .where(and(
-          eq(students.tutorId, tutorId),
-          ne(students.id, id) // Exclude current student
-        ));
-
-      if (tutorStudents[0].count >= 5) {
-        return NextResponse.json(
-          { error: "Ce tuteur a atteint sa capacité maximale (5 étudiants)" },
-          { status: 400 }
-        );
-      }
-    }
 
     const [updatedStudent] = await db
       .update(students)
