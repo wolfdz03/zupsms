@@ -28,6 +28,7 @@ import { Search, CheckSquare, Download, Clock, UserX, Calendar, List, Filter, X 
 import { toast } from "sonner";
 import { AvatarDisplay } from "@/components/ui/avatar-picker";
 import { CalendarView } from "@/components/sessions/calendar-view";
+import { SessionSidePanel } from "@/components/sessions/session-side-panel";
 
 type Tutor = {
   id: string;
@@ -67,7 +68,7 @@ const DAY_LABELS: Record<string, string> = {
 
 export default function SessionsPage() {
   const [students, setStudents] = useState<Student[]>([]);
-  const [tutors, setTutors] = useState<TutorFilter[]>([]);
+  const [tutors, setTutors] = useState<Tutor[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -83,6 +84,10 @@ export default function SessionsPage() {
   const [viewMode, setViewMode] = useState<"list" | "calendar">("list");
   const [showFilters, setShowFilters] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
+  
+  // Side panel state
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   useEffect(() => {
     fetchStudents();
@@ -97,6 +102,20 @@ export default function SessionsPage() {
   const handleCalendarViewChange = useCallback((view: string) => {
     // Optional: handle view changes if needed
     console.log("Calendar view changed to:", view);
+  }, []);
+
+  const handleOpenSidePanel = useCallback((student: Student) => {
+    setSelectedStudent(student);
+    setIsSidePanelOpen(true);
+  }, []);
+
+  const handleCloseSidePanel = useCallback(() => {
+    setIsSidePanelOpen(false);
+    setSelectedStudent(null);
+  }, []);
+
+  const handleUpdateStudent = useCallback((updatedStudent: Student) => {
+    setStudents(prev => prev.map(s => s.id === updatedStudent.id ? updatedStudent : s));
   }, []);
 
   const fetchStudents = async () => {
@@ -116,7 +135,7 @@ export default function SessionsPage() {
     try {
       const response = await fetch("/api/tutors");
       const data = await response.json();
-      setTutors(data.map((t: Tutor) => ({ id: t.id, name: t.name })));
+      setTutors(data);
     } catch (error) {
       console.error("Error fetching tutors:", error);
     }
@@ -573,13 +592,18 @@ export default function SessionsPage() {
                       const initial = student.fullName.charAt(0).toUpperCase();
                       const avatarColor = colors[studentIndex % colors.length];
                       
-                      return (
-                        <Card key={student.id} className="border-2 shadow-card hover:shadow-card-hover transition-card rounded-xl">
+                        return (
+                          <Card 
+                            key={student.id} 
+                            className="border-2 shadow-card hover:shadow-card-hover transition-card rounded-xl cursor-pointer"
+                            onClick={() => handleOpenSidePanel(student)}
+                          >
                           <CardContent className="p-6">
                             <div className="flex items-start gap-5">
                               <Checkbox
                                 checked={selectedIds.has(student.id)}
                                 onCheckedChange={() => toggleSelect(student.id)}
+                                onClick={(e) => e.stopPropagation()}
                                 className="w-5 h-5 mt-1"
                               />
                               
@@ -669,6 +693,7 @@ export default function SessionsPage() {
                                 <Switch
                                   checked={student.isActive}
                                   onCheckedChange={() => handleToggle(student.id, student.isActive)}
+                                  onClick={(e) => e.stopPropagation()}
                                   className="data-[state=checked]:bg-green-600"
                                 />
                               </div>
@@ -705,11 +730,21 @@ export default function SessionsPage() {
                   currentDate={currentDate}
                   onNavigate={handleCalendarNavigate}
                   onViewChange={handleCalendarViewChange}
+                  onEventClick={handleOpenSidePanel}
                 />
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Session Side Panel */}
+        <SessionSidePanel
+          isOpen={isSidePanelOpen}
+          onClose={handleCloseSidePanel}
+          student={selectedStudent}
+          tutors={tutors}
+          onUpdate={handleUpdateStudent}
+        />
 
         {/* Confirmation Dialog */}
         <Dialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>

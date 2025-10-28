@@ -34,6 +34,7 @@ interface CalendarViewProps {
   currentDate: Date;
   onNavigate: (newDate: Date) => void;
   onViewChange: (view: string) => void;
+  onEventClick: (student: Student) => void;
 }
 
 const TUTOR_COLORS = [
@@ -56,7 +57,7 @@ const DAY_MAP: Record<string, number> = {
   samedi: 6,
 };
 
-export function CalendarView({ students, currentDate, onNavigate, onViewChange }: CalendarViewProps) {
+export function CalendarView({ students, currentDate, onNavigate, onViewChange, onEventClick }: CalendarViewProps) {
   const calendarRef = useRef<FullCalendar>(null);
 
   const events = useMemo(() => {
@@ -146,8 +147,9 @@ export function CalendarView({ students, currentDate, onNavigate, onViewChange }
 
   const handleEventClick = (info: any) => {
     const student = info.event.extendedProps.student;
-    console.log("Event clicked:", student);
-    // You can add a dialog here to show student details
+    if (student) {
+      onEventClick(student);
+    }
   };
 
   if (!students || students.length === 0) {
