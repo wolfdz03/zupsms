@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { students } from "@/db/schema";
+import { students, tutors } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function PATCH(
@@ -33,7 +33,43 @@ export async function PATCH(
       );
     }
 
-    return NextResponse.json(updatedStudent);
+    // Fetch the student with tutor relationship (same structure as GET route)
+    const [studentWithTutor] = await db
+      .select({
+        id: students.id,
+        fullName: students.fullName,
+        phone: students.phone,
+        email: students.email,
+        dayOfWeek: students.dayOfWeek,
+        startTime: students.startTime,
+        tutorId: students.tutorId,
+        isActive: students.isActive,
+        createdAt: students.createdAt,
+        tutor: {
+          id: tutors.id,
+          name: tutors.name,
+          email: tutors.email,
+          avatarUrl: tutors.avatarUrl,
+        },
+      })
+      .from(students)
+      .leftJoin(tutors, eq(students.tutorId, tutors.id))
+      .where(eq(students.id, id));
+
+    if (!studentWithTutor) {
+      return NextResponse.json(
+        { error: "Student not found" },
+        { status: 404 }
+      );
+    }
+
+    // Normalize tutor to null if tutor.id is null (no tutor assigned)
+    const response = {
+      ...studentWithTutor,
+      tutor: studentWithTutor.tutor?.id ? studentWithTutor.tutor : null,
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Error updating student:", error);
     return NextResponse.json(

@@ -9,9 +9,18 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { X, Save, User, Clock, Calendar, Phone, Mail, UserCheck } from "lucide-react";
+import { Save, User, Clock, Calendar, Phone, Mail, UserCheck } from "lucide-react";
 import { toast } from "sonner";
 import { AvatarDisplay } from "@/components/ui/avatar-picker";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 
 type Tutor = {
   id: string;
@@ -32,9 +41,9 @@ type Student = {
   tutor: Tutor | null;
 };
 
-interface SessionSidePanelProps {
+interface SessionDrawerProps {
   isOpen: boolean;
-  onClose: () => void;
+  onOpenChange: (open: boolean) => void;
   student: Student | null;
   tutors: Tutor[];
   onUpdate: (updatedStudent: Student) => void;
@@ -51,7 +60,7 @@ const DAY_LABELS: Record<string, string> = {
   dimanche: "Dimanche",
 };
 
-export function SessionSidePanel({ isOpen, onClose, student, tutors, onUpdate }: SessionSidePanelProps) {
+export function SessionDrawer({ isOpen, onOpenChange, student, tutors, onUpdate }: SessionDrawerProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
@@ -97,7 +106,7 @@ export function SessionSidePanel({ isOpen, onClose, student, tutors, onUpdate }:
         const updatedStudent = await response.json();
         onUpdate(updatedStudent);
         toast.success("Session mise à jour avec succès!");
-        onClose();
+        onOpenChange(false);
       } else {
         toast.error("Erreur lors de la mise à jour");
       }
@@ -109,39 +118,18 @@ export function SessionSidePanel({ isOpen, onClose, student, tutors, onUpdate }:
     }
   };
 
-  if (!isOpen || !student) return null;
+  if (!student) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      
-      {/* Side Panel */}
-      <div className="absolute right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl transform transition-transform duration-300 ease-in-out">
-        <div className="flex flex-col h-full">
-          {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b-2 bg-gradient-to-r from-blue-50 to-blue-100">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center">
-                <User className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl font-bold text-neutral-900">Modifier la session</h2>
-                <p className="text-sm text-neutral-600">Éditer les détails de l'étudiant</p>
-              </div>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onClose}
-              className="w-8 h-8 p-0 hover:bg-white/50"
-            >
-              <X className="w-4 h-4" />
-            </Button>
-          </div>
+    <Drawer open={isOpen} onOpenChange={onOpenChange}>
+      <DrawerContent>
+        <div className="mx-auto w-full max-w-2xl">
+          <DrawerHeader className="pb-4 border-b">
+            <DrawerTitle className="text-2xl font-bold">Modifier la session</DrawerTitle>
+            <DrawerDescription>Éditer les détails de l'étudiant</DrawerDescription>
+          </DrawerHeader>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="p-6 space-y-6 overflow-y-auto max-h-[60vh]">
             {/* Student Info Card */}
             <Card className="border-2 shadow-card">
               <CardHeader className="pb-4">
@@ -277,12 +265,11 @@ export function SessionSidePanel({ isOpen, onClose, student, tutors, onUpdate }:
             </Card>
           </div>
 
-          {/* Footer */}
-          <div className="p-6 border-t-2 bg-neutral-50">
+          <DrawerFooter className="border-t pt-4">
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={onClose}
+                onClick={() => onOpenChange(false)}
                 disabled={isSaving}
                 className="flex-1 h-12"
               >
@@ -297,10 +284,10 @@ export function SessionSidePanel({ isOpen, onClose, student, tutors, onUpdate }:
                 {isSaving ? "Sauvegarde..." : "Sauvegarder"}
               </Button>
             </div>
-          </div>
+          </DrawerFooter>
         </div>
-      </div>
-    </div>
+      </DrawerContent>
+    </Drawer>
   );
 }
 

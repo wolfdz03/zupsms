@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { students, smsLogs } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { sendSMS, formatMessage } from "@/lib/sms";
 
 // Map day numbers to French day names
@@ -109,6 +109,41 @@ export async function GET(request: Request) {
 
     for (const student of studentsToNotify) {
       try {
+        // CRITICAL: Check if SMS has already been sent to this student today
+        // Check if SMS already sent today - use select query instead of findFirst
+        const existingSmsList = await db
+          .select()
+          .from(smsLogs)
+          .where(and(
+            eq(smsLogs.studentId, student.id),
+            eq(smsLogs.status, "sent")
+          ))
+          .orderBy(desc(smsLogs.sentAt))
+          .limit(1);
+        
+        const existingSms = existingSmsList[0] || null;
+
+        // Check if the existing SMS was sent today
+        if (existingSms && existingSms.sentAt) {
+          const existingSmsDate = existingSms.sentAt;
+          const isToday = 
+            existingSmsDate.getFullYear() === now.getFullYear() &&
+            existingSmsDate.getMonth() === now.getMonth() &&
+            existingSmsDate.getDate() === now.getDate();
+          
+          if (isToday) {
+            console.log(`⏭️  SMS already sent to ${student.fullName} today, skipping...`);
+            results.push({
+              studentId: student.id,
+              name: student.fullName,
+              phone: student.phone,
+              status: "skipped",
+              reason: "Already sent today",
+            });
+            continue;
+          }
+        }
+
         // Send SMS with template variables (using Sweego variable names: jour, heure)
         const result = await sendSMS(student.phone, {
           jour: currentDay,

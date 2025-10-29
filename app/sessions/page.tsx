@@ -28,7 +28,7 @@ import { Search, CheckSquare, Download, Clock, UserX, Calendar, List, Filter, X 
 import { toast } from "sonner";
 import { AvatarDisplay } from "@/components/ui/avatar-picker";
 import { CalendarView } from "@/components/sessions/calendar-view";
-import { SessionSidePanel } from "@/components/sessions/session-side-panel";
+import { SessionDrawer } from "@/components/sessions/session-drawer";
 
 type Tutor = {
   id: string;
@@ -85,8 +85,8 @@ export default function SessionsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   
-  // Side panel state
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+  // Drawer state
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
 
   useEffect(() => {
@@ -106,12 +106,7 @@ export default function SessionsPage() {
 
   const handleOpenSidePanel = useCallback((student: Student) => {
     setSelectedStudent(student);
-    setIsSidePanelOpen(true);
-  }, []);
-
-  const handleCloseSidePanel = useCallback(() => {
-    setIsSidePanelOpen(false);
-    setSelectedStudent(null);
+    setIsDrawerOpen(true);
   }, []);
 
   const handleUpdateStudent = useCallback((updatedStudent: Student) => {
@@ -204,44 +199,74 @@ export default function SessionsPage() {
 
   const handleBulkActivate = async () => {
     const selectedStudents = Array.from(selectedIds);
-    let successCount = 0;
-
-    for (const id of selectedStudents) {
-      const student = students.find((s) => s.id === id);
-      if (student && !student.isActive) {
-        try {
-          await fetch(`/api/students/${id}/toggle`, { method: "PATCH" });
-          successCount++;
-        } catch (error) {
-          console.error("Error activating student:", error);
-        }
+    // Filter to only inactive students
+    const inactiveIds = selectedStudents.filter(
+      (id) => {
+        const student = students.find((s) => s.id === id);
+        return student && !student.isActive;
       }
+    );
+
+    if (inactiveIds.length === 0) {
+      toast.info("Aucun étudiant inactif sélectionné");
+      return;
     }
 
-    fetchStudents();
-    setSelectedIds(new Set());
-    toast.success(`${successCount} étudiant(s) activé(s) avec succès`);
+    try {
+      const response = await fetch("/api/students/bulk-toggle", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentIds: inactiveIds, isActive: true }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to activate students");
+      }
+
+      const result = await response.json();
+      fetchStudents();
+      setSelectedIds(new Set());
+      toast.success(`${result.count} étudiant(s) activé(s) avec succès`);
+    } catch (error) {
+      console.error("Error activating students:", error);
+      toast.error("Erreur lors de l'activation");
+    }
   };
 
   const handleBulkDeactivate = async () => {
     const selectedStudents = Array.from(selectedIds);
-    let successCount = 0;
-
-    for (const id of selectedStudents) {
-      const student = students.find((s) => s.id === id);
-      if (student && student.isActive) {
-        try {
-          await fetch(`/api/students/${id}/toggle`, { method: "PATCH" });
-          successCount++;
-        } catch (error) {
-          console.error("Error deactivating student:", error);
-        }
+    // Filter to only active students
+    const activeIds = selectedStudents.filter(
+      (id) => {
+        const student = students.find((s) => s.id === id);
+        return student && student.isActive;
       }
+    );
+
+    if (activeIds.length === 0) {
+      toast.info("Aucun étudiant actif sélectionné");
+      return;
     }
 
-    fetchStudents();
-    setSelectedIds(new Set());
-    toast.success(`${successCount} étudiant(s) désactivé(s) avec succès`);
+    try {
+      const response = await fetch("/api/students/bulk-toggle", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ studentIds: activeIds, isActive: false }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to deactivate students");
+      }
+
+      const result = await response.json();
+      fetchStudents();
+      setSelectedIds(new Set());
+      toast.success(`${result.count} étudiant(s) désactivé(s) avec succès`);
+    } catch (error) {
+      console.error("Error deactivating students:", error);
+      toast.error("Erreur lors de la désactivation");
+    }
   };
 
   const handleExport = () => {
@@ -737,10 +762,10 @@ export default function SessionsPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Session Side Panel */}
-        <SessionSidePanel
-          isOpen={isSidePanelOpen}
-          onClose={handleCloseSidePanel}
+        {/* Session Drawer */}
+        <SessionDrawer
+          isOpen={isDrawerOpen}
+          onOpenChange={setIsDrawerOpen}
           student={selectedStudent}
           tutors={tutors}
           onUpdate={handleUpdateStudent}

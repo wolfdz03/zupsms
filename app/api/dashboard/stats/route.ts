@@ -60,6 +60,18 @@ export async function GET() {
     const currentDay = today.toLocaleDateString("fr-FR", { weekday: "long" }).toLowerCase();
     const currentTime = new Date().toTimeString().slice(0, 5); // HH:MM format
 
+    // Get all of today's sessions (total count)
+    const [todaySessionsResult] = await db
+      .select({ count: count() })
+      .from(students)
+      .where(
+        and(
+          eq(students.dayOfWeek, currentDay as "lundi" | "mardi" | "mercredi" | "jeudi" | "vendredi" | "samedi" | "dimanche"),
+          eq(students.isActive, true)
+        )
+      );
+
+    // Get upcoming sessions (only future sessions today)
     const upcomingSessions = await db
       .select()
       .from(students)
@@ -70,7 +82,7 @@ export async function GET() {
           sql`${students.startTime} > ${currentTime}`
         )
       )
-      .limit(5);
+      .orderBy(sql`${students.startTime} ASC`);
 
     // Get recent SMS logs
     const recentLogs = await db
@@ -101,6 +113,8 @@ export async function GET() {
       totalTutors,
       assignedStudents,
       utilizationRate,
+      todaySessionsCount: todaySessionsResult?.count || 0,
+      upcomingSessionsCount: upcomingSessions.length,
       upcomingSessions,
       recentActivity: recentLogs,
     });
