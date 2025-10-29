@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { students, tutors } from "@/db/schema";
+import { students, tutors, smsLogs } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 export async function PATCH(
@@ -85,6 +85,13 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    
+    // First, delete all related SMS logs to avoid foreign key constraint issues
+    await db
+      .delete(smsLogs)
+      .where(eq(smsLogs.studentId, id));
+    
+    // Then delete the student
     const [deletedStudent] = await db
       .delete(students)
       .where(eq(students.id, id))
